@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dinmec — Control de Manufactura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #181c25;
+  --surface2: #1e2330;
+  --surface3: #252b3a;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text: #e8eaf0;
+  --text2: #8b90a0;
+  --text3: #555b6e;
+  --accent: #e05a1e;
+  --accent2: #f07040;
+  --blue: #3b82f6;
+  --blue-bg: rgba(59,130,246,0.1);
+  --green: #22c55e;
+  --green-bg: rgba(34,197,94,0.1);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.1);
+  --red: #ef4444;
+  --red-bg: rgba(239,68,68,0.1);
+  --purple: #a78bfa;
+  --purple-bg: rgba(167,139,250,0.1);
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 13px; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }
+
+/* LOGIN SCREEN */
+#login-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; gap: 32px;
+}
+.login-logo {
+  display: flex; align-items: center; gap: 12px;
+}
+.login-logo .logo-mark {
+  width: 48px; height: 48px; background: var(--accent); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 18px; font-weight: 500; color: white;
+}
+.login-logo .logo-text { font-size: 22px; font-weight: 300; letter-spacing: 0.08em; color: var(--text); }
+.login-logo .logo-text span { font-weight: 600; }
+.login-card {
+  background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg);
+  padding: 32px 40px; text-align: center; max-width: 360px; width: 90%;
+}
+.login-card h2 { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+.login-card p { font-size: 12px; color: var(--text2); margin-bottom: 24px; line-height: 1.6; }
+.config-row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; text-align: left; }
+.config-row label { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.config-row input {
+  padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text); font-family: var(--mono); font-size: 11px; width: 100%;
+}
+.config-row input:focus { outline: none; border-color: var(--accent); }
+.btn-signin {
+  width: 100%; padding: 11px; background: var(--accent); border: none; border-radius: var(--radius);
+  color: white; font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-signin:hover { background: var(--accent2); }
+.btn-signin:disabled { background: var(--surface3); color: var(--text3); cursor: not-allowed; }
+.login-note { font-size: 11px; color: var(--text3); margin-top: 12px; line-height: 1.5; }
+
+/* MAIN APP */
+#app { display: none; flex-direction: column; height: 100vh; overflow: hidden; }
+
+/* TOP BAR */
+.topbar {
+  display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  height: 52px; background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tb-logo { display: flex; align-items: center; gap: 8px; }
+.tb-logo .mark {
+  width: 28px; height: 28px; background: var(--accent); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 11px; font-weight: 500; color: white;
+}
+.tb-logo .name { font-size: 13px; font-weight: 500; letter-spacing: 0.05em; }
+.tb-sep { width: 1px; height: 20px; background: var(--border2); }
+.tb-project { font-size: 12px; color: var(--text2); }
+.tb-project select {
+  background: transparent; border: none; color: var(--text); font-family: var(--sans); font-size: 12px;
+  cursor: pointer; outline: none;
+}
+.tb-tabs { display: flex; gap: 2px; margin-left: auto; }
+.tb-tab {
+  padding: 5px 14px; font-size: 12px; border-radius: 6px; cursor: pointer;
+  color: var(--text2); border: none; background: transparent; font-family: var(--sans);
+  transition: all 0.15s;
+}
+.tb-tab:hover { color: var(--text); background: var(--surface2); }
+.tb-tab.on { background: var(--surface3); color: var(--text); }
+.tb-user {
+  display: flex; align-items: center; gap: 8px; padding: 4px 10px;
+  background: var(--surface2); border-radius: 20px; border: 1px solid var(--border);
+  font-size: 11px; color: var(--text2); cursor: pointer;
+}
+.tb-user .av {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: white;
+}
+.tb-sync {
+  padding: 5px 10px; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 6px; color: var(--text2); font-size: 11px; cursor: pointer;
+  font-family: var(--sans); transition: all 0.15s;
+}
+.tb-sync:hover { color: var(--text); border-color: var(--accent); }
+.tb-sync.syncing { color: var(--amber); border-color: var(--amber); }
+
+/* METRICS BAR */
+.metrics-bar {
+  display: flex; gap: 1px; padding: 10px 16px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.metric {
+  flex: 1; padding: 8px 12px; background: var(--surface2); border-radius: var(--radius);
+  min-width: 0;
+}
+.metric:not(:last-child) { margin-right: 8px; }
+.metric .m-lbl { font-size: 10px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+.metric .m-val { font-size: 20px; font-weight: 500; font-family: var(--mono); color: var(--text); }
+.metric .m-sub { font-size: 10px; color: var(--text3); margin-top: 1px; }
+.metric.c-red .m-val { color: var(--red); }
+.metric.c-amber .m-val { color: var(--amber); }
+.metric.c-green .m-val { color: var(--green); }
+.metric.c-blue .m-val { color: var(--blue); }
+.metric.c-acc .m-val { color: var(--accent2); }
+
+/* LAYOUT */
+.main-layout { display: flex; flex: 1; overflow: hidden; }
+.sidebar {
+  width: 240px; flex-shrink: 0; background: var(--surface);
+  border-right: 1px solid var(--border); overflow-y: auto; padding: 10px 8px;
+}
+.content { flex: 1; overflow-y: auto; padding: 12px 16px; }
+
+/* SIDEBAR */
+.sb-section { margin-bottom: 16px; }
+.sb-title { font-size: 10px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 8px; margin-bottom: 4px; }
+.sb-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: var(--radius);
+  cursor: pointer; transition: background 0.12s; border: 1px solid transparent;
+}
+.sb-item:hover { background: var(--surface2); }
+.sb-item.active { background: var(--surface3); border-color: var(--border2); }
+.sb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sb-dot.run { background: var(--green); }
+.sb-dot.pause { background: var(--amber); animation: blink 1.5s infinite; }
+.sb-dot.done { background: var(--text3); }
+.sb-dot.urg { background: var(--red); animation: blink 1s infinite; }
+.sb-dot.pend { background: var(--surface3); border: 1px solid var(--border2); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.sb-name { font-size: 11px; color: var(--text2); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-item.active .sb-name { color: var(--text); }
+.sb-timer { font-size: 10px; font-family: var(--mono); color: var(--text3); flex-shrink: 0; }
+.sb-badge { font-size: 9px; padding: 1px 5px; border-radius: 10px; flex-shrink: 0; }
+.sb-badge.urg { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+.sb-filter {
+  display: flex; gap: 4px; padding: 4px 8px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.sf-btn {
+  padding: 3px 8px; font-size: 10px; border-radius: 20px; border: 1px solid var(--border2);
+  background: transparent; color: var(--text3); cursor: pointer; font-family: var(--sans);
+  transition: all 0.12s;
+}
+.sf-btn.on, .sf-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--border2); }
+
+/* PIECE DETAIL CARD */
+.page { display: none; }
+.page.on { display: block; }
+
+.piece-header {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px;
+  background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg);
+  padding: 14px 16px;
+}
+.ph-icon {
+  width: 44px; height: 44px; border-radius: 10px; background: var(--surface3);
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  flex-shrink: 0; border: 1px solid var(--border);
+}
+.ph-info { flex: 1; min-width: 0; }
+.ph-name { font-size: 15px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ph-meta { font-size: 11px; color: var(--text2); margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap; }
+.ph-meta span { display: flex; align-items: center; gap: 4px; }
+.ph-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: flex-start; }
+
+/* BADGE */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; border: 1px solid transparent; }
+.b-izq { background: var(--blue-bg); color: #60a5fa; border-color: rgba(59,130,246,0.25); }
+.b-der { background: var(--green-bg); color: #4ade80; border-color: rgba(34,197,94,0.25); }
+.b-urg { background: var(--red-bg); color: var(--red); border-color: rgba(239,68,68,0.3); animation: blink 1s infinite; }
+.b-run { background: var(--blue-bg); color: var(--blue); }
+.b-pause { background: var(--amber-bg); color: var(--amber); }
+.b-done { background: var(--green-bg); color: var(--green); }
+.b-late { background: var(--red-bg); color: var(--red); }
+.b-ok { background: var(--green-bg); color: var(--green); }
+.b-warn { background: var(--amber-bg); color: var(--amber); }
+.b-pend { background: var(--surface3); color: var(--text3); }
+
+/* BUTTONS */
+.btn {
+  padding: 7px 14px; font-size: 12px; border-radius: var(--radius); cursor: pointer;
+  border: 1px solid var(--border2); background: var(--surface2); color: var(--text);
+  font-family: var(--sans); font-weight: 500; transition: all 0.15s; white-space: nowrap;
+}
+.btn:hover { background: var(--surface3); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn-green { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.3); color: var(--green); }
+.btn-green:hover { background: rgba(34,197,94,0.25); }
+.btn-amber { background: var(--amber-bg); border-color: rgba(245,158,11,0.3); color: var(--amber); }
+.btn-amber:hover { background: rgba(245,158,11,0.2); }
+.btn-blue { background: var(--blue-bg); border-color: rgba(59,130,246,0.3); color: var(--blue); }
+.btn-blue:hover { background: rgba(59,130,246,0.2); }
+.btn-red { background: var(--red-bg); border-color: rgba(239,68,68,0.3); color: var(--red); }
+.btn-red:hover { background: rgba(239,68,68,0.2); }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+
+/* ALERT BANNERS */
+.alert { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radius); margin-bottom: 8px; font-size: 11px; border: 1px solid transparent; }
+.alert-red { background: var(--red-bg); border-color: rgba(239,68,68,0.3); color: #fca5a5; }
+.alert-amber { background: var(--amber-bg); border-color: rgba(245,158,11,0.3); color: #fcd34d; }
+.alert-blue { background: var(--blue-bg); border-color: rgba(59,130,246,0.3); color: #93c5fd; }
+.alert .al-icon { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.alert-red .al-icon { background: rgba(239,68,68,0.3); color: var(--red); }
+.alert-amber .al-icon { background: rgba(245,158,11,0.3); color: var(--amber); }
+.alert-blue .al-icon { background: rgba(59,130,246,0.3); color: var(--blue); }
+
+/* PIPELINE */
+.pipeline-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 12px; overflow-x: auto; }
+.pipeline { display: flex; align-items: flex-start; min-width: max-content; gap: 0; }
+.proc-step { display: flex; flex-direction: column; align-items: center; min-width: 60px; cursor: pointer; }
+.proc-step:hover .proc-dot { border-color: var(--accent); }
+.proc-dot {
+  width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 10px; font-weight: 600; border: 2px solid transparent;
+  font-family: var(--mono); transition: all 0.15s;
+}
+.pd-done { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4); color: var(--green); }
+.pd-active { background: rgba(59,130,246,0.2); border-color: var(--blue); color: var(--blue); }
+.pd-pause { background: var(--amber-bg); border-color: rgba(245,158,11,0.5); color: var(--amber); }
+.pd-late { background: var(--red-bg); border-color: rgba(239,68,68,0.5); color: var(--red); }
+.pd-pend { background: var(--surface2); border-color: var(--border); color: var(--text3); }
+.pd-na { background: transparent; border-color: var(--border); color: var(--text3); opacity: 0.3; }
+.proc-lbl { font-size: 9px; color: var(--text3); margin-top: 4px; text-align: center; max-width: 58px; line-height: 1.3; font-family: var(--mono); }
+.proc-conn { width: 14px; height: 2px; background: var(--surface3); margin-top: 15px; flex-shrink: 0; }
+.proc-conn.done-conn { background: rgba(34,197,94,0.3); }
+
+/* TIMER SECTION */
+.timer-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 12px; }
+.ts-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.ts-proc { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.ts-proc span { color: var(--accent2); font-weight: 500; }
+.timer-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.timer-display {
+  font-size: 32px; font-family: var(--mono); font-weight: 500; color: var(--text);
+  letter-spacing: 0.05em; min-width: 160px;
+}
+.timer-display.td-run { color: var(--blue); }
+.timer-display.td-pause { color: var(--amber); }
+.timer-display.td-late { color: var(--red); }
+.timer-display.td-done { color: var(--green); }
+.timer-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.time-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.tc { background: var(--surface2); border-radius: var(--radius); padding: 10px; border: 1px solid var(--border); }
+.tc .tc-lbl { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
+.tc .tc-val { font-size: 15px; font-weight: 500; font-family: var(--mono); }
+.tc .tc-ok { color: var(--green); }
+.tc .tc-warn { color: var(--amber); }
+.tc .tc-bad { color: var(--red); }
+.tc .tc-neutral { color: var(--text); }
+.tc .tc-sub { font-size: 10px; color: var(--text3); margin-top: 3px; }
+.progress-bar { height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+.pb-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+/* ESTIMATED TIME INPUT */
+.est-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.est-row label { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.est-input {
+  width: 80px; padding: 5px 8px; background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 12px; text-align: center;
+}
+.est-input:focus { outline: none; border-color: var(--accent); }
+.urgente-toggle {
+  display: flex; align-items: center; gap: 8px; margin-left: auto; cursor: pointer; font-size: 11px; color: var(--text2);
+}
+.urgente-toggle input { width: 16px; height: 16px; accent-color: var(--red); cursor: pointer; }
+
+/* PAUSE LOG */
+.pause-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 12px; }
+.sec-title { font-size: 10px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+.pause-item {
+  display: flex; align-items: center; gap: 10px; padding: 7px 10px;
+  background: var(--surface2); border-radius: var(--radius); margin-bottom: 5px;
+  border: 1px solid var(--border);
+}
+.pi-time { font-family: var(--mono); font-size: 11px; color: var(--amber); min-width: 40px; }
+.pi-reason { font-size: 11px; color: var(--text2); flex: 1; }
+.pi-dur { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+.pi-active { color: var(--amber); animation: blink 1.5s infinite; }
+
+/* HIST REF */
+.ref-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 12px; }
+.ref-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.ref-row { display: flex; align-items: center; gap: 8px; }
+.ref-lbl { font-size: 10px; color: var(--text3); font-family: var(--mono); min-width: 50px; }
+.ref-track { flex: 1; background: var(--surface2); border-radius: 2px; height: 8px; overflow: hidden; }
+.ref-fill { height: 100%; border-radius: 2px; }
+.ref-val { font-size: 10px; font-family: var(--mono); color: var(--text2); min-width: 40px; text-align: right; }
+.ref-current-line { position: relative; }
+
+/* DASHBOARD PAGE */
+.dash-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+.dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; }
+.dash-card h4 { font-size: 10px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+
+/* OPERATOR BADGE */
+.op-badge {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--surface3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: var(--text2); border: 1px solid var(--border2);
+  flex-shrink: 0;
+}
+
+/* HIST TABLE */
+.hist-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+th { text-align: left; padding: 7px 8px; color: var(--text3); font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); font-weight: 400; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--border); color: var(--text2); font-family: var(--mono); font-size: 11px; }
+tr:hover td { background: var(--surface2); }
+tr:last-child td { border-bottom: none; }
+td.td-green { color: var(--green); }
+td.td-red { color: var(--red); }
+td.td-amber { color: var(--amber); }
+td.td-text { font-family: var(--sans); color: var(--text); }
+
+/* MODAL BACKDROP */
+.modal-backdrop {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 1000; align-items: center; justify-content: center;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg);
+  padding: 20px; width: 300px; max-width: 94vw;
+}
+.modal h3 { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.modal p { font-size: 12px; color: var(--text2); margin-bottom: 16px; }
+.reason-grid { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+.rb {
+  padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text2); font-family: var(--sans); font-size: 12px; cursor: pointer; text-align: left;
+  transition: all 0.12s;
+}
+.rb:hover, .rb.sel { background: var(--surface3); color: var(--text); border-color: var(--accent); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* OPERATOR SELECTOR */
+.op-select { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.op-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 14px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+  cursor: pointer; transition: all 0.12s;
+}
+.op-btn:hover, .op-btn.sel { border-color: var(--accent); background: var(--surface3); }
+.op-btn .ob-av { width: 32px; height: 32px; border-radius: 50%; background: var(--surface3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--text2); }
+.op-btn.sel .ob-av { background: var(--accent); color: white; }
+.op-btn .ob-name { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+
+/* LOADING */
+.loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--text2); font-family: var(--mono); font-size: 12px; }
+.spin { width: 20px; height: 20px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* EMPTY */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: var(--text3); gap: 8px; font-family: var(--mono); font-size: 12px; text-align: center; }
+
+/* TOAST */
+#toast {
+  position: fixed; bottom: 20px; right: 20px; background: var(--surface);
+  border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px 16px;
+  font-size: 12px; color: var(--text); z-index: 9999; transform: translateY(80px);
+  transition: transform 0.3s; display: flex; align-items: center; gap: 8px;
+  pointer-events: none;
+}
+#toast.show { transform: translateY(0); }
+#toast.t-ok { border-color: rgba(34,197,94,0.4); }
+#toast.t-err { border-color: rgba(239,68,68,0.4); color: #fca5a5; }
+#toast.t-warn { border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+
+/* SYNC STATUS */
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); display: inline-block; margin-right: 4px; }
+.sync-dot.ok { background: var(--green); }
+.sync-dot.err { background: var(--red); }
+.sync-dot.syncing { background: var(--amber); animation: blink 0.8s infinite; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-logo">
+    <div class="logo-mark">DM</div>
+    <div class="logo-text"><span>DINMEC</span> manufactura</div>
+  </div>
+  <div class="login-card">
+    <h2>Configuración inicial</h2>
+    <p>Ingresa tu Client ID de Google OAuth y el ID de tu hoja de cálculo para conectar la app.</p>
+    <div class="config-row">
+      <label>Google OAuth Client ID</label>
+      <input type="text" id="cfg-clientid" placeholder="123456789-abc...apps.googleusercontent.com" value="">
+    </div>
+    <div class="config-row">
+      <label>ID del Spreadsheet</label>
+      <input type="text" id="cfg-sheetid" value="19nqVJynUBS9S2-EKQvg8gOnEKxYLVCifmrUt5MQwYPM">
+    </div>
+    <div class="config-row">
+      <label>Nombre de la hoja (pestaña)</label>
+      <input type="text" id="cfg-sheetname" value="Seguimiento de Proyecto">
+    </div>
+    <button class="btn-signin" id="btn-login" onclick="initLogin()">Conectar con Google</button>
+    <p class="login-note">Necesitas habilitar Google Sheets API en Google Cloud Console y crear un OAuth Client ID de tipo "Aplicación web" con origen: <b>file://</b> o el dominio donde alojes esta app.</p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="tb-logo">
+      <div class="mark">DM</div>
+      <div class="name">DINMEC</div>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-project">
+      Proyecto: <select id="sel-project" onchange="filterProject()">
+        <option>Todos</option>
+      </select>
+    </div>
+    <div class="tb-tabs">
+      <button class="tb-tab on" onclick="showPage('piezas')">Piezas</button>
+      <button class="tb-tab" onclick="showPage('dashboard')">Dashboard</button>
+      <button class="tb-tab" onclick="showPage('historial')">Historial</button>
+    </div>
+    <button class="tb-sync" id="btn-sync" onclick="syncAll()">
+      <span class="sync-dot" id="sync-dot"></span>Sincronizar
+    </button>
+    <div class="tb-user" onclick="signOut()">
+      <div class="av" id="user-av">?</div>
+      <span id="user-name">Usuario</span>
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="metrics-bar">
+    <div class="metric c-blue"><div class="m-lbl">En proceso</div><div class="m-val" id="m-active">0</div><div class="m-sub">piezas activas</div></div>
+    <div class="metric c-amber"><div class="m-lbl">En pausa</div><div class="m-val" id="m-paused">0</div><div class="m-sub">requieren atención</div></div>
+    <div class="metric c-red"><div class="m-lbl">Urgentes</div><div class="m-val" id="m-urgent">0</div><div class="m-sub">prioridad máxima</div></div>
+    <div class="metric c-green"><div class="m-lbl">Completadas</div><div class="m-val" id="m-done">0</div><div class="m-sub">piezas hoy</div></div>
+    <div class="metric c-acc"><div class="m-lbl">Eficiencia</div><div class="m-val" id="m-eff">—</div><div class="m-sub">tiempo productivo</div></div>
+  </div>
+
+  <div class="main-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sb-section">
+        <div class="sb-title">Filtros</div>
+        <div class="sb-filter">
+          <button class="sf-btn on" onclick="filterStatus('all',this)">Todas</button>
+          <button class="sf-btn" onclick="filterStatus('run',this)">Activas</button>
+          <button class="sf-btn" onclick="filterStatus('pause',this)">Pausadas</button>
+          <button class="sf-btn" onclick="filterStatus('urg',this)">Urgentes</button>
+        </div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-title">Piezas <span id="sb-count" style="color:var(--text3)"></span></div>
+        <div id="sb-list"><div class="loading"><div class="spin"></div>Cargando…</div></div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <!-- PIEZAS PAGE -->
+      <div id="page-piezas" class="page on">
+        <div id="piece-detail">
+          <div class="empty-state">
+            <div style="font-size:32px;margin-bottom:8px">◈</div>
+            Selecciona una pieza del panel izquierdo<br>para ver su detalle y controlar el proceso
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD PAGE -->
+      <div id="page-dashboard" class="page">
+        <div id="dashboard-content">
+          <div class="loading"><div class="spin"></div>Generando dashboard…</div>
+        </div>
+      </div>
+
+      <!-- HISTORIAL PAGE -->
+      <div id="page-historial" class="page">
+        <div class="dash-card">
+          <h4>Registro completo de tiempos</h4>
+          <div class="hist-wrap">
+            <table>
+              <thead><tr><th>Pieza</th><th>Proceso</th><th>Operador</th><th>Inicio</th><th>Fin</th><th>Pausa</th><th>Neto</th><th>Estimado</th><th>Diferencia</th><th>Rendimiento</th></tr></thead>
+              <tbody id="hist-tbody"><tr><td colspan="10" style="text-align:center;color:var(--text3)">Sin registros aún</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAUSE MODAL -->
+<div class="modal-backdrop" id="modal-pause">
+  <div class="modal">
+    <h3>¿Motivo de la pausa?</h3>
+    <p>Selecciona el motivo para registrarlo correctamente.</p>
+    <div class="reason-grid" id="reason-grid">
+      <button class="rb" onclick="selReason(this,'Comida / descanso')">🍽 Comida / descanso</button>
+      <button class="rb" onclick="selReason(this,'Actividad urgente')">⚡ Actividad urgente</button>
+      <button class="rb" onclick="selReason(this,'Esperando material')">📦 Esperando material</button>
+      <button class="rb" onclick="selReason(this,'Falla en máquina')">🔧 Falla en máquina</button>
+      <button class="rb" onclick="selReason(this,'Ajuste / setup')">⚙ Ajuste / setup</button>
+      <button class="rb" onclick="selReason(this,'Inspección de calidad')">🔍 Inspección de calidad</button>
+      <button class="rb" onclick="selReason(this,'Otro')">📝 Otro motivo</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="closeModal('modal-pause')">Cancelar</button>
+      <button class="btn btn-amber btn-sm" id="btn-confirm-pause" onclick="confirmPause()" disabled>Pausar proceso</button>
+    </div>
+  </div>
+</div>
+
+<!-- OPERATOR MODAL -->
+<div class="modal-backdrop" id="modal-operator">
+  <div class="modal">
+    <h3>¿Quién realiza este proceso?</h3>
+    <p>Selecciona el operador que ejecuta el proceso.</p>
+    <div class="op-select" id="op-select-grid"></div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">O escribe el nombre:</label>
+      <input type="text" id="op-custom" placeholder="Nombre del operador" style="width:100%;padding:7px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--sans);font-size:12px" oninput="selOperator(null,this.value)">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="closeModal('modal-operator')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="btn-confirm-op" onclick="confirmOperator()">Iniciar proceso</button>
+    </div>
+  </div>
+</div>
+
+<!-- DONE MODAL -->
+<div class="modal-backdrop" id="modal-done">
+  <div class="modal">
+    <h3>Completar proceso</h3>
+    <p id="done-msg">¿Confirmas que el proceso ha finalizado?</p>
+    <div id="done-next-proc" style="margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:var(--radius);font-size:12px;color:var(--text2)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="closeModal('modal-done')">Cancelar</button>
+      <button class="btn btn-green btn-sm" onclick="confirmDone()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIGURATION
+// ============================================================
+const CONFIG = {
+  sheetId: '19nqVJynUBS9S2-EKQvg8gOnEKxYLVCifmrUt5MQwYPM',
+  sheetName: 'Seguimiento de Proyecto',
+  clientId: '',
+  scopes: 'https://www.googleapis.com/auth/spreadsheets',
+  // Column mapping based on the screenshots
+  // These can be adjusted to match exact column positions
+  COLS: {
+    PLANO: 0,         // A
+    IMAGEN_PIEZA: 1,  // B
+    LADO_IZQ: 2,      // C  (L)
+    LADO_DER: 3,      // D  (R)
+    IMAGEN2: 4,       // E
+    MAT_ESCUADREADO: 5, // F
+    IMAGEN3: 6,       // G
+    FRESADO: 7,       // H
+    IMAGEN4: 8,       // I
+    TORNEADO: 9,      // J
+    IMAGEN5: 10,      // K
+    CNC1: 11, CNC2: 13, CNC3: 15, CNC4: 17, CNC5: 19, CNC6: 21, CNC7: 23,
+    BANCO: 25,
+    // Extended cols (sheet 2 visible area)
+    LIBERACION: 28, TEMPLE: 29, PROVEEDOR1: 30,
+    PAVONADO: 31, PINTURA: 32, CORTE_HILO: 33, RECTIFICADO: 34,
+    ANODIZADO: 35, NITRURADO: 37, ENSAMBLE1: 39, ENSAMBLE2: 41, SOLDADURA: 43,
+    // Times (sheet 3)
+    T_PROGRAMADO: 50, T_CNC: 51, T_TERMICO: 52, T_ENSAMBLE: 53, T_MEDICION: 54,
+    // Our added tracking cols (append at end)
+    OPERADOR: 55, URGENTE: 56, EST_TOTAL: 57,
+    T_INICIO: 58, T_FIN: 59, T_PAUSA: 60, T_NETO: 61,
+    PAUSAS_LOG: 62
+  }
+};
+
+const PROCESSES = [
+  {key:'habilitado',   label:'Hab.',       full:'Habilitado'},
+  {key:'escuadreado',  label:'Escuad.',    full:'Escuadreado'},
+  {key:'fresado',      label:'Fresado',    full:'Fresado'},
+  {key:'taladrado',    label:'Talad.',     full:'Taladrado'},
+  {key:'torneado',     label:'Tornead.',   full:'Torneado'},
+  {key:'cnc1',         label:'CNC-1',      full:'CNC Postura 1'},
+  {key:'cnc2',         label:'CNC-2',      full:'CNC Postura 2'},
+  {key:'cnc3',         label:'CNC-3',      full:'CNC Postura 3'},
+  {key:'cnc4',         label:'CNC-4',      full:'CNC Postura 4'},
+  {key:'cnc5',         label:'CNC-5',      full:'CNC Postura 5'},
+  {key:'cnc6',         label:'CNC-6',      full:'CNC Postura 6'},
+  {key:'cnc7',         label:'CNC-7',      full:'CNC Postura 7'},
+  {key:'banco',        label:'Banco',      full:'Banco'},
+  {key:'liberacion',   label:'Lib.',       full:'Liberación'},
+  {key:'temple',       label:'Temple',     full:'Temple'},
+  {key:'pavonado',     label:'Pavon.',     full:'Pavonado'},
+  {key:'pintura',      label:'Pintura',    full:'Pintura'},
+  {key:'corte_hilo',   label:'C.Hilo',     full:'Corte por hilo'},
+  {key:'rectificado',  label:'Rectif.',    full:'Rectificado'},
+  {key:'anodizado',    label:'Anod.',      full:'Anodizado'},
+  {key:'nitrurado',    label:'Nitru.',     full:'Nitrurado'},
+  {key:'ensamble1',    label:'Ens.1',      full:'Ensamble 1'},
+  {key:'ensamble2',    label:'Ens.2',      full:'Ensamble 2'},
+  {key:'soldadura',    label:'Sold.',      full:'Soldadura'},
+];
+
+const OPERATORS = ['J. López','M. Ruiz','C. Arce','P. García','R. Torres','L. Mendoza'];
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  tokenClient: null,
+  accessToken: null,
+  pieces: [],        // loaded from sheet
+  timers: {},        // active intervals keyed by piece row index
+  activePiece: null, // currently viewed piece index
+  pauseTarget: null,
+  pauseReason: null,
+  opTarget: null,
+  opSelected: null,
+  doneTarget: null,
+  filterStatus: 'all',
+  history: [],       // local log entries
+  syncQueue: [],     // pending writes
+  rowOffset: 2       // first data row in sheet (1-indexed, row 1 = header)
+};
+
+// ============================================================
+// AUTH
+// ============================================================
+function initLogin() {
+  const clientId = document.getElementById('cfg-clientid').value.trim();
+  const sheetId  = document.getElementById('cfg-sheetid').value.trim();
+  const sheetName = document.getElementById('cfg-sheetname').value.trim();
+  if (!clientId) { showToast('Ingresa tu Client ID de Google OAuth','t-err'); return; }
+  CONFIG.clientId   = clientId;
+  CONFIG.sheetId    = sheetId;
+  CONFIG.sheetName  = sheetName;
+  localStorage.setItem('dm_config', JSON.stringify({clientId, sheetId, sheetName}));
+  startOAuth();
+}
+
+function startOAuth() {
+  state.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.clientId,
+    scope: CONFIG.scopes,
+    callback: (resp) => {
+      if (resp.error) { showToast('Error de autenticación: '+resp.error,'t-err'); return; }
+      state.accessToken = resp.access_token;
+      onSignedIn();
+    }
+  });
+  state.tokenClient.requestAccessToken();
+}
+
+function onSignedIn() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  // Get user info
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: 'Bearer '+state.accessToken }
+  }).then(r=>r.json()).then(u => {
+    const initials = (u.name||'U').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    document.getElementById('user-av').textContent = initials;
+    document.getElementById('user-name').textContent = (u.name||'').split(' ')[0];
+  });
+  loadSheetData();
+}
+
+function signOut() {
+  google.accounts.oauth2.revoke(state.accessToken, () => {
+    state.accessToken = null;
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+  });
+}
+
+// ============================================================
+// LOAD SHEET DATA
+// ============================================================
+async function loadSheetData() {
+  setSyncState('syncing');
+  try {
+    const range = encodeURIComponent(`${CONFIG.sheetName}!A1:BU200`);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.sheetId}/values/${range}`;
+    const res = await fetch(url, { headers: { Authorization: 'Bearer '+state.accessToken }});
+    const data = await res.json();
+    if (!data.values) { showToast('Hoja vacía o sin acceso','t-err'); setSyncState('err'); return; }
+    parseSheetData(data.values);
+    setSyncState('ok');
+    showToast('Datos cargados — '+state.pieces.length+' piezas','t-ok');
+  } catch(e) {
+    showToast('Error al cargar datos: '+e.message,'t-err');
+    setSyncState('err');
+  }
+}
+
+function parseSheetData(rows) {
+  const headers = rows[0] || [];
+  // Build project list
+  const projects = new Set();
+  state.pieces = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || !row[0]) continue;
+    const plano = (row[0]||'').trim();
+    if (!plano) continue;
+
+    // Detect which processes APPLY (have "APLICA" or value in cell)
+    const applies = (v) => v && v.toString().trim().toUpperCase() === 'APLICA';
+    const hasVal  = (v) => v && v.toString().trim() !== '';
+
+    // Parse process states from sheet
+    // We look at specific columns per process
+    const procStates = PROCESSES.map(p => {
+      // Default: check if there's a value indicating it was done or applies
+      return 'pend';
+    });
+
+    // Detect "APLICA" columns from image 1
+    // Mat Escuadreado col F → escuadreado
+    if (applies(row[5])) procStates[1] = 'pend'; // escuadreado applies
+    if (applies(row[7])) procStates[2] = 'pend'; // fresado
+    if (applies(row[9])) procStates[4] = 'pend'; // torneado
+    // CNC postures
+    [11,13,15,17,19,21,23].forEach((col,ci) => {
+      if (col < row.length && hasVal(row[col])) procStates[5+ci] = 'pend';
+    });
+    if (col25 = row[25], hasVal(row[25])) procStates[12] = 'pend'; // banco
+
+    // Liberacion col
+    const libCol = headers.findIndex(h => h && h.toString().toLowerCase().includes('liberac'));
+    if (libCol > 0 && hasVal(row[libCol])) procStates[13] = 'pend';
+
+    // Parse lado
+    const ladoIzq = hasVal(row[2]);
+    const ladoDer = hasVal(row[3]);
+
+    // Parse times from sheet 3 area
+    const tProg = row[50]||'0:00';
+    const tCNC  = row[51]||'0:00';
+
+    // Parse our tracking cols (if they exist)
+    const operador  = row[55]||'';
+    const urgente   = (row[56]||'').toString().toUpperCase() === 'SI';
+    const estTotal  = parseInt(row[57])||0;
+    const tInicio   = row[58]||'';
+    const tFin      = row[59]||'';
+    const tPausa    = parseInt(row[60])||0;
+    const tNeto     = parseInt(row[61])||0;
+    const pausasLog = row[62]||'';
+
+    // Derive project from plano name (first part before second _)
+    const parts = plano.split('_');
+    const project = parts.length >= 2 ? parts[0]+'_'+parts[1] : parts[0];
+    projects.add(project);
+
+    // Determine running/paused/done status
+    let running = false, paused = false, done = false;
+    if (tFin) done = true;
+    else if (tInicio && !tFin) {
+      // Check if paused
+      const lastPause = parsePausesLog(pausasLog);
+      const lastEntry = lastPause[lastPause.length-1];
+      if (lastEntry && !lastEntry.fin) paused = true;
+      else running = true;
+    }
+
+    // Active process index
+    let activeStep = procStates.findIndex(s => s==='active');
+    if (activeStep < 0) activeStep = procStates.findIndex(s => s==='pend');
+
+    // Seconds elapsed
+    let seconds = tNeto * 60;
+    if (running && tInicio) {
+      const start = new Date(tInicio);
+      const now = new Date();
+      seconds = Math.max(0, Math.floor((now - start)/1000) - tPausa*60);
+    }
+
+    const piece = {
+      rowIndex: i,
+      sheetRow: i + 1, // 1-indexed for API
+      plano, ladoIzq, ladoDer, project,
+      tProg, tCNC,
+      operador, urgente, estTotal,
+      tInicio, tFin, tPausa, tNeto,
+      pausasLog: parsePausesLog(pausasLog),
+      procStates, activeStep,
+      running, paused, done,
+      seconds,
+      rawRow: row
+    };
+
+    state.pieces.push(piece);
+  }
+
+  // Update project selector
+  const sel = document.getElementById('sel-project');
+  sel.innerHTML = '<option value="">Todos</option>';
+  projects.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p; opt.textContent = p; sel.appendChild(opt);
+  });
+
+  // Restart timers for running pieces
+  state.pieces.forEach((p,i) => {
+    if (p.running) startTimer(i);
+  });
+
+  renderSidebar();
+  updateMetrics();
+  if (state.activePiece !== null) renderPieceDetail(state.activePiece);
+}
+
+function parsePausesLog(str) {
+  if (!str) return [];
+  try {
+    return JSON.parse(str);
+  } catch {
+    return [];
+  }
+}
+
+function col25(x){ return x; } // dummy to avoid parse error above
+
+// ============================================================
+// RENDER SIDEBAR
+// ============================================================
+function renderSidebar() {
+  const list = document.getElementById('sb-list');
+  let pieces = state.pieces;
+
+  // Filter
+  if (state.filterStatus === 'run') pieces = pieces.filter(p=>p.running);
+  else if (state.filterStatus === 'pause') pieces = pieces.filter(p=>p.paused);
+  else if (state.filterStatus === 'urg') pieces = pieces.filter(p=>p.urgente);
+
+  document.getElementById('sb-count').textContent = '('+pieces.length+')';
+
+  if (!pieces.length) {
+    list.innerHTML = '<div class="empty-state" style="padding:20px">Sin resultados</div>';
+    return;
+  }
+
+  list.innerHTML = pieces.map((p,_) => {
+    const idx = state.pieces.indexOf(p);
+    const dotClass = p.urgente?'urg':p.running?'run':p.paused?'pause':p.done?'done':'pend';
+    const time = fmtTime(p.seconds);
+    const active = state.activePiece === idx;
+    return `<div class="sb-item${active?' active':''}" onclick="selectPiece(${idx})">
+      <div class="sb-dot ${dotClass}"></div>
+      <div class="sb-name">${p.plano}</div>
+      ${p.urgente?'<span class="sb-badge urg">URG</span>':''}
+      <div class="sb-timer">${p.running||p.paused?time:''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// SELECT PIECE
+// ============================================================
+function selectPiece(idx) {
+  state.activePiece = idx;
+  showPage('piezas');
+  renderPieceDetail(idx);
+  renderSidebar();
+}
+
+function renderPieceDetail(idx) {
+  const p = state.pieces[idx];
+  if (!p) return;
+  const el = document.getElementById('piece-detail');
+
+  const pct = p.estTotal > 0 ? Math.round((p.seconds/60) / p.estTotal * 100) : null;
+  const pctColor = !pct?'td-neutral':pct<=100?'tc-ok':pct<=120?'tc-warn':'tc-bad';
+  const pbColor  = !pct?'#555':pct<=100?'#22c55e':pct<=120?'#f59e0b':'#ef4444';
+
+  // Alerts
+  let alerts = '';
+  if (p.urgente) alerts += `<div class="alert alert-red"><div class="al-icon">!</div>Pieza marcada como <strong>URGENTE</strong> — asignar prioridad máxima</div>`;
+  const pausedMins = p.paused ? (p.pausasLog[p.pausasLog.length-1]?._activeMins||0) : 0;
+  if (p.paused && pausedMins > 25) alerts += `<div class="alert alert-amber"><div class="al-icon">⏸</div>Proceso pausado hace más de 25 min — motivo: ${p.pausasLog[p.pausasLog.length-1]?.reason||'—'}</div>`;
+  if (pct && pct > 110) alerts += `<div class="alert alert-red"><div class="al-icon">!</div>Tiempo estimado excedido al ${pct}% — proceso: ${PROCESSES[p.activeStep]?.full||'—'}</div>`;
+
+  // Pipeline
+  const pipeline = PROCESSES.map((proc, i) => {
+    const s = p.procStates[i] || 'na';
+    const sym = {done:'✓',active:'▶',pause:'⏸',late:'!',pend:'·',na:'—'}[s]||'·';
+    const isActive = i === p.activeStep;
+    const conn = i < PROCESSES.length-1 ? `<div class="proc-conn ${s==='done'?'done-conn':''}"></div>` : '';
+    const tip = isActive ? ` style="outline:2px solid var(--accent);outline-offset:2px;"` : '';
+    return `<div class="proc-step" title="${proc.full}" onclick="setActiveProcess(${idx},${i})">
+      <div class="proc-dot pd-${s}"${tip}>${sym}</div>
+      <div class="proc-lbl">${proc.label}</div>
+    </div>${conn}`;
+  }).join('');
+
+  // Timer state
+  const timerClass = p.running?'td-run':p.paused?'td-pause':p.done?'td-done':'';
+  const timerVal = fmtTime(p.seconds);
+
+  // Controls
+  let ctrlBtns = '';
+  if (!p.running && !p.paused && !p.done) {
+    ctrlBtns = `<button class="btn btn-primary" onclick="startProcess(${idx})">▶ Iniciar proceso</button>`;
+  } else if (p.running) {
+    ctrlBtns = `
+      <button class="btn btn-amber" onclick="openPauseModal(${idx})">⏸ Pausar</button>
+      <button class="btn btn-green" onclick="openDoneModal(${idx})">✓ Completar</button>`;
+  } else if (p.paused) {
+    ctrlBtns = `
+      <button class="btn btn-blue" onclick="resumeProcess(${idx})">▶ Reanudar</button>
+      <button class="btn btn-green" onclick="openDoneModal(${idx})">✓ Completar</button>`;
+  } else if (p.done) {
+    ctrlBtns = `<span class="badge b-done" style="font-size:12px;padding:6px 14px;">✓ Proceso completado</span>`;
+  }
+
+  // Pauses log
+  let pauseLog = '';
+  if (p.pausasLog && p.pausasLog.length) {
+    pauseLog = `<div class="pause-section">
+      <div class="sec-title">Registro de pausas</div>
+      ${p.pausasLog.map(pl => `
+        <div class="pause-item">
+          <div class="pi-time">${pl.inicio||'—'}</div>
+          <div class="pi-reason">${pl.reason}</div>
+          <div class="pi-dur ${!pl.fin?'pi-active':''}">${pl.fin?pl.dur+' min':'En curso…'}</div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  // Time reference (simulated from similar pieces)
+  const avgMin = p.estTotal > 0 ? p.estTotal : 60;
+  const minRef = Math.round(avgMin * 0.7);
+  const maxRef = Math.round(avgMin * 1.4);
+  const currMin = Math.round(p.seconds / 60);
+
+  el.innerHTML = `
+    <div class="piece-header">
+      <div class="ph-icon">${p.ladoIzq?'◧':p.ladoDer?'◨':'⬡'}</div>
+      <div class="ph-info">
+        <div class="ph-name">
+          ${p.plano}
+          <span class="badge ${p.ladoIzq?'b-izq':'b-der'}">${p.ladoIzq?'Izquierda':'Derecha'}</span>
+          ${p.urgente?'<span class="badge b-urg">URGENTE</span>':''}
+          ${p.running?'<span class="badge b-run">En proceso</span>':''}
+          ${p.paused?'<span class="badge b-pause">Pausado</span>':''}
+          ${p.done?'<span class="badge b-done">Completado</span>':''}
+        </div>
+        <div class="ph-meta">
+          ${p.operador?`<span>Operador: <strong style="color:var(--text)">${p.operador}</strong></span>`:'<span style="color:var(--amber)">Sin operador asignado</span>'}
+          ${p.tProg?`<span>T. prog: ${p.tProg}</span>`:''}
+          ${p.tCNC?`<span>CNC: ${p.tCNC}</span>`:''}
+          <span>Proyecto: ${p.project}</span>
+        </div>
+      </div>
+      <div class="ph-actions">
+        <button class="btn btn-sm ${p.urgente?'btn-red':''}" onclick="toggleUrgente(${idx})">${p.urgente?'Quitar urgente':'⚑ Urgente'}</button>
+      </div>
+    </div>
+
+    ${alerts}
+
+    <div class="pipeline-wrap">
+      <div class="pipeline">${pipeline}</div>
+    </div>
+
+    <div class="est-row">
+      <label>Tiempo estimado total:</label>
+      <input class="est-input" type="number" value="${p.estTotal||''}" placeholder="min" min="1"
+        onchange="updateEstimated(${idx},this.value)">
+      <span style="font-size:11px;color:var(--text3)">minutos</span>
+      <div class="urgente-toggle">
+        <input type="checkbox" id="urg-ck-${idx}" ${p.urgente?'checked':''} onchange="toggleUrgente(${idx})">
+        <label for="urg-ck-${idx}">Marcar como urgente</label>
+      </div>
+    </div>
+
+    <div class="timer-section">
+      <div class="ts-header">
+        <div class="ts-proc">Proceso activo: <span>${PROCESSES[p.activeStep]?.full||'—'}</span></div>
+        ${p.operador?`<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)"><div class="op-badge">${p.operador.split(' ').map(w=>w[0]).join('').substring(0,2)}</div>${p.operador}</div>`:''}
+      </div>
+      <div class="timer-row">
+        <div class="timer-display ${timerClass}" id="timer-disp-${idx}">${timerVal}</div>
+        <div class="timer-btns">${ctrlBtns}</div>
+      </div>
+      <div class="time-cards">
+        <div class="tc">
+          <div class="tc-lbl">Estimado total</div>
+          <div class="tc-val tc-neutral">${p.estTotal?p.estTotal+' min':'No definido'}</div>
+          <div class="tc-sub">Tiempo objetivo</div>
+        </div>
+        <div class="tc">
+          <div class="tc-lbl">Transcurrido (neto)</div>
+          <div class="tc-val ${pctColor}">${currMin} min ${pct?'('+pct+'%)':''}</div>
+          ${p.estTotal?`<div class="progress-bar"><div class="pb-fill" style="width:${Math.min(pct||0,100)}%;background:${pbColor}"></div></div>`:''}
+          <div class="tc-sub">Sin contar pausas: ${p.tPausa||0} min pausa</div>
+        </div>
+        <div class="tc">
+          <div class="tc-lbl">Referencia histórica</div>
+          <div class="tc-val" style="color:var(--text2);font-size:12px">Mín ${minRef} · Prom ${avgMin} · Máx ${maxRef} min</div>
+          <div class="tc-sub">${pct&&pct<=100?'✓ Buen rendimiento':pct&&pct<=115?'⚠ Ligero desfase':pct&&pct>115?'✗ Desfasado':''}</div>
+        </div>
+      </div>
+    </div>
+
+    ${pauseLog}
+  `;
+}
+
+// ============================================================
+// PROCESS CONTROLS
+// ============================================================
+function startProcess(idx) {
+  state.opTarget = idx;
+  // Open operator modal
+  const grid = document.getElementById('op-select-grid');
+  grid.innerHTML = OPERATORS.map(op => {
+    const initials = op.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    return `<div class="op-btn" onclick="selOperator(this,'${op}')">
+      <div class="ob-av">${initials}</div>
+      <div class="ob-name">${op.split(' ')[1]||op.split(' ')[0]}</div>
+    </div>`;
+  }).join('');
+  state.opSelected = state.pieces[idx].operador || null;
+  document.getElementById('op-custom').value = '';
+  openModal('modal-operator');
+}
+
+function selOperator(btn, name) {
+  document.querySelectorAll('.op-btn').forEach(b=>b.classList.remove('sel'));
+  if (btn) btn.classList.add('sel');
+  state.opSelected = name;
+  document.getElementById('op-custom').value = name;
+}
+
+function confirmOperator() {
+  if (!state.opSelected) { showToast('Selecciona un operador','t-warn'); return; }
+  closeModal('modal-operator');
+  const idx = state.opTarget;
+  const p = state.pieces[idx];
+  p.operador = state.opSelected;
+  p.running = true;
+  p.paused = false;
+  p.tInicio = new Date().toISOString();
+  p.seconds = 0;
+  startTimer(idx);
+  queueWrite(idx, ['operador','tInicio']);
+  renderPieceDetail(idx);
+  renderSidebar();
+  updateMetrics();
+  showToast('Proceso iniciado — '+p.operador,'t-ok');
+}
+
+function openPauseModal(idx) {
+  state.pauseTarget = idx;
+  state.pauseReason = null;
+  document.querySelectorAll('.rb').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('btn-confirm-pause').disabled = true;
+  openModal('modal-pause');
+}
+
+function selReason(btn, reason) {
+  document.querySelectorAll('.rb').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  state.pauseReason = reason;
+  document.getElementById('btn-confirm-pause').disabled = false;
+}
+
+function confirmPause() {
+  if (!state.pauseReason) return;
+  closeModal('modal-pause');
+  const idx = state.pauseTarget;
+  const p = state.pieces[idx];
+  p.running = false;
+  p.paused = true;
+  const now = new Date();
+  const hhmm = pad(now.getHours())+':'+pad(now.getMinutes());
+  p.pausasLog.push({ inicio: hhmm, reason: state.pauseReason, fin: null, dur: null, _startMs: Date.now() });
+  clearInterval(state.timers[idx]);
+  queueWrite(idx, ['paused','pausasLog']);
+  renderPieceDetail(idx);
+  renderSidebar();
+  updateMetrics();
+  showToast('Proceso pausado — '+state.pauseReason,'t-warn');
+}
+
+function resumeProcess(idx) {
+  const p = state.pieces[idx];
+  p.running = true;
+  p.paused = false;
+  const now = new Date();
+  const hhmm = pad(now.getHours())+':'+pad(now.getMinutes());
+  const last = p.pausasLog[p.pausasLog.length-1];
+  if (last && !last.fin) {
+    const startMs = last._startMs || Date.now();
+    last.dur = Math.max(1, Math.round((Date.now() - startMs) / 60000));
+    last.fin = hhmm;
+    p.tPausa = (p.tPausa||0) + last.dur;
+  }
+  startTimer(idx);
+  queueWrite(idx, ['running','pausasLog','tPausa']);
+  renderPieceDetail(idx);
+  renderSidebar();
+  updateMetrics();
+  showToast('Proceso reanudado','t-ok');
+}
+
+function openDoneModal(idx) {
+  state.doneTarget = idx;
+  const p = state.pieces[idx];
+  const currMin = Math.round(p.seconds/60);
+  const pct = p.estTotal > 0 ? Math.round(currMin/p.estTotal*100) : null;
+  document.getElementById('done-msg').textContent = `¿Confirmas que el proceso "${PROCESSES[p.activeStep]?.full||''}" ha finalizado? Tiempo neto: ${currMin} min${pct?' ('+pct+'% del estimado)':''}`;
+  const nextIdx = p.procStates.findIndex((s,i) => i > p.activeStep && s === 'pend');
+  document.getElementById('done-next-proc').textContent = nextIdx >= 0 ? 'Siguiente proceso: '+PROCESSES[nextIdx].full : 'Esta es la última etapa activa';
+  openModal('modal-done');
+}
+
+function confirmDone() {
+  closeModal('modal-done');
+  const idx = state.doneTarget;
+  const p = state.pieces[idx];
+  clearInterval(state.timers[idx]);
+  p.running = false;
+  p.paused = false;
+  p.done = true;
+  p.tFin = new Date().toISOString();
+  p.tNeto = Math.round(p.seconds / 60);
+
+  // Mark current step as done, advance to next
+  if (p.activeStep >= 0) p.procStates[p.activeStep] = 'done';
+  const nextIdx = p.procStates.findIndex((s,i) => i > p.activeStep && s === 'pend');
+  if (nextIdx >= 0) {
+    p.activeStep = nextIdx;
+    p.done = false; // more processes remain
+    p.tFin = null;
+  }
+
+  // Add to history
+  state.history.push({
+    plano: p.plano, proceso: PROCESSES[p.activeStep-1]?.full||'—',
+    operador: p.operador||'—',
+    inicio: p.tInicio, fin: p.tFin,
+    pausas: p.tPausa||0, neto: p.tNeto,
+    estimado: p.estTotal, pct: p.estTotal>0?Math.round(p.tNeto/p.estTotal*100):null
+  });
+
+  queueWrite(idx, ['done','tFin','tNeto','procStates']);
+  renderPieceDetail(idx);
+  renderSidebar();
+  updateMetrics();
+  renderHistory();
+  showToast('Proceso completado — '+p.tNeto+' min neto','t-ok');
+}
+
+function setActiveProcess(idx, procIdx) {
+  const p = state.pieces[idx];
+  if (p.running || p.paused) { showToast('Detén el proceso actual antes de cambiar','t-warn'); return; }
+  p.activeStep = procIdx;
+  renderPieceDetail(idx);
+}
+
+function toggleUrgente(idx) {
+  const p = state.pieces[idx];
+  p.urgente = !p.urgente;
+  document.getElementById('m-urgent').textContent = state.pieces.filter(x=>x.urgente).length;
+  queueWrite(idx, ['urgente']);
+  renderPieceDetail(idx);
+  renderSidebar();
+  showToast(p.urgente?'Pieza marcada como URGENTE':'Urgente removido', p.urgente?'t-err':'t-ok');
+}
+
+function updateEstimated(idx, val) {
+  const p = state.pieces[idx];
+  p.estTotal = parseInt(val)||0;
+  queueWrite(idx, ['estTotal']);
+  renderPieceDetail(idx);
+}
+
+// ============================================================
+// TIMER
+// ============================================================
+function startTimer(idx) {
+  clearInterval(state.timers[idx]);
+  state.timers[idx] = setInterval(() => {
+    const p = state.pieces[idx];
+    if (!p || !p.running) return;
+    p.seconds++;
+    // Update display if this piece is active
+    const disp = document.getElementById('timer-disp-'+idx);
+    if (disp) disp.textContent = fmtTime(p.seconds);
+    // Update sidebar timer
+    renderSidebarTimer(idx);
+    // Check for late alert (every 60s)
+    if (p.seconds % 60 === 0 && p.estTotal > 0) {
+      const pct = Math.round((p.seconds/60)/p.estTotal*100);
+      if (pct === 110) showToast('⚠ '+p.plano+' al 110% del tiempo estimado','t-warn');
+      if (pct === 130) showToast('✗ '+p.plano+' superó el 130% del estimado','t-err');
+    }
+  }, 1000);
+}
+
+function renderSidebarTimer(idx) {
+  const items = document.querySelectorAll('.sb-item');
+  // Find the item for this idx
+  items.forEach(item => {
+    if (item.getAttribute('onclick') === `selectPiece(${idx})`) {
+      const timerEl = item.querySelector('.sb-timer');
+      if (timerEl) timerEl.textContent = fmtTime(state.pieces[idx].seconds);
+    }
+  });
+}
+
+// ============================================================
+// METRICS
+// ============================================================
+function updateMetrics() {
+  const active  = state.pieces.filter(p=>p.running).length;
+  const paused  = state.pieces.filter(p=>p.paused).length;
+  const urgent  = state.pieces.filter(p=>p.urgente).length;
+  const done    = state.pieces.filter(p=>p.done && p.tFin).length;
+  const totalSecs = state.pieces.reduce((a,p)=>a+p.seconds,0);
+  const pauseSecs = state.pieces.reduce((a,p)=>a+(p.tPausa||0)*60,0);
+  const eff = totalSecs > 0 ? Math.round((totalSecs - pauseSecs)/totalSecs*100) : null;
+  document.getElementById('m-active').textContent = active;
+  document.getElementById('m-paused').textContent = paused;
+  document.getElementById('m-urgent').textContent = urgent;
+  document.getElementById('m-done').textContent   = done;
+  document.getElementById('m-eff').textContent    = eff !== null ? eff+'%' : '—';
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const el = document.getElementById('dashboard-content');
+  const totalPiezas = state.pieces.length;
+  const enProceso = state.pieces.filter(p=>p.running||p.paused).length;
+  const completadas = state.pieces.filter(p=>p.tFin).length;
+  const urgentes = state.pieces.filter(p=>p.urgente).length;
+  const desfasadas = state.pieces.filter(p=>p.estTotal>0 && Math.round(p.seconds/60)>p.estTotal).length;
+
+  // Process time averages from history
+  const procTimes = {};
+  state.history.forEach(h => {
+    if (!procTimes[h.proceso]) procTimes[h.proceso] = [];
+    procTimes[h.proceso].push(h.neto);
+  });
+
+  const procBars = Object.entries(procTimes).map(([proc,times]) => {
+    const avg = Math.round(times.reduce((a,b)=>a+b,0)/times.length);
+    const maxT = Math.max(...Object.values(procTimes).map(t=>Math.round(t.reduce((a,b)=>a+b,0)/t.length)));
+    const pct = Math.round(avg/maxT*100);
+    return `<div class="bar-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:10px;color:var(--text3);font-family:var(--mono);min-width:70px;text-align:right">${proc.substring(0,8)}</span>
+      <div style="flex:1;background:var(--surface2);border-radius:2px;height:8px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:2px"></div>
+      </div>
+      <span style="font-size:10px;font-family:var(--mono);color:var(--text2);min-width:36px">${avg} min</span>
+    </div>`;
+  }).join('') || '<div style="color:var(--text3);font-size:11px;font-family:var(--mono)">Sin datos de historial aún</div>';
+
+  // Operator stats
+  const opStats = {};
+  state.pieces.forEach(p => {
+    if (!p.operador) return;
+    if (!opStats[p.operador]) opStats[p.operador] = {done:0,total:0,sumPct:0};
+    opStats[p.operador].total++;
+    if (p.tFin) opStats[p.operador].done++;
+    if (p.estTotal > 0) {
+      const pct = Math.round((p.seconds/60)/p.estTotal*100);
+      opStats[p.operador].sumPct += pct;
+    }
+  });
+
+  const opBars = Object.entries(opStats).sort((a,b)=>{
+    const rendA = a[1].sumPct/Math.max(a[1].total,1);
+    const rendB = b[1].sumPct/Math.max(b[1].total,1);
+    return rendA - rendB;
+  }).map(([op,s]) => {
+    const rend = Math.round(s.sumPct / Math.max(s.total,1));
+    const col = rend<=100?'var(--green)':rend<=115?'var(--amber)':'var(--red)';
+    const initials = op.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <div class="op-badge">${initials}</div>
+      <span style="font-size:11px;color:var(--text2);min-width:65px">${op.split(' ')[0]}</span>
+      <div style="flex:1;background:var(--surface2);border-radius:2px;height:8px;overflow:hidden">
+        <div style="width:${Math.min(rend,100)}%;height:100%;background:${col};border-radius:2px"></div>
+      </div>
+      <span style="font-size:11px;font-family:var(--mono);color:${col};min-width:35px">${rend}%</span>
+    </div>`;
+  }).join('') || '<div style="color:var(--text3);font-size:11px;font-family:var(--mono)">Sin operadores asignados aún</div>';
+
+  const progPct = totalPiezas > 0 ? Math.round(completadas/totalPiezas*100) : 0;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+      <div class="metric c-green"><div class="m-lbl">Completadas</div><div class="m-val">${completadas}</div><div class="m-sub">de ${totalPiezas} total</div></div>
+      <div class="metric c-amber"><div class="m-lbl">En proceso</div><div class="m-val">${enProceso}</div><div class="m-sub">activas/pausadas</div></div>
+      <div class="metric c-red"><div class="m-lbl">Desfasadas</div><div class="m-val">${desfasadas}</div><div class="m-sub">vs estimado</div></div>
+      <div class="metric c-acc"><div class="m-lbl">Meta proyecto</div><div class="m-val">${progPct}%</div><div class="m-sub">avance total</div></div>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-card">
+        <h4>Tiempo promedio por proceso</h4>
+        ${procBars}
+      </div>
+      <div class="dash-card">
+        <h4>Rendimiento por operador</h4>
+        ${opBars}
+      </div>
+    </div>
+    <div class="dash-card">
+      <h4>Avance del proyecto</h4>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px">
+        <div style="flex:1;min-width:200px">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px;font-family:var(--mono)">
+            <span>0</span><span>${completadas}/${totalPiezas} piezas</span>
+          </div>
+          <div class="progress-bar" style="height:8px">
+            <div class="pb-fill" style="width:${progPct}%;background:var(--accent)"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge b-done">Completadas: ${completadas}</span>
+          <span class="badge b-run">En proceso: ${enProceso}</span>
+          <span class="badge b-urg">Urgentes: ${urgentes}</span>
+          <span class="badge b-pend">Pendientes: ${totalPiezas-completadas-enProceso}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+function renderHistory() {
+  const tbody = document.getElementById('hist-tbody');
+  if (!state.history.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3)">Sin registros aún. Completa procesos para verlos aquí.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.history.slice().reverse().map(h => {
+    const diff = h.estimado ? (h.neto - h.estimado) : null;
+    const diffStr = diff !== null ? (diff >= 0 ? '+'+diff : diff)+' min' : '—';
+    const diffClass = diff === null ? '' : diff <= 0 ? 'td-green' : diff <= 5 ? 'td-amber' : 'td-red';
+    const rendStr = h.pct ? h.pct+'%' : '—';
+    const rendClass = !h.pct?'':h.pct<=100?'td-green':h.pct<=115?'td-amber':'td-red';
+    return `<tr>
+      <td class="td-text">${h.plano}</td>
+      <td>${h.proceso}</td>
+      <td>${h.operador}</td>
+      <td>${h.inicio?new Date(h.inicio).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'—'}</td>
+      <td>${h.fin?new Date(h.fin).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'—'}</td>
+      <td>${h.pausas||0} min</td>
+      <td>${h.neto||0} min</td>
+      <td>${h.estimado||'—'} min</td>
+      <td class="${diffClass}">${diffStr}</td>
+      <td class="${rendClass}">${rendStr}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// SHEET WRITE QUEUE
+// ============================================================
+function queueWrite(idx, fields) {
+  state.syncQueue.push({ idx, fields, ts: Date.now() });
+  // Debounce writes
+  clearTimeout(state._writeTimeout);
+  state._writeTimeout = setTimeout(flushQueue, 2000);
+}
+
+async function flushQueue() {
+  if (!state.syncQueue.length || !state.accessToken) return;
+  const queue = [...state.syncQueue];
+  state.syncQueue = [];
+  setSyncState('syncing');
+
+  // Group by piece
+  const byPiece = {};
+  queue.forEach(q => { byPiece[q.idx] = (byPiece[q.idx]||new Set()); q.fields.forEach(f=>byPiece[q.idx].add(f)); });
+
+  const requests = [];
+  Object.entries(byPiece).forEach(([idx, fields]) => {
+    const p = state.pieces[idx];
+    if (!p) return;
+    const row = p.sheetRow + 1; // header is row 1, data starts row 2
+    // Build value updates
+    const updates = [];
+    // Operador → col BDB (col 55 = BD)
+    if (fields.has('operador')) updates.push({ range: `${CONFIG.sheetName}!BD${row}`, values: [[p.operador||'']] });
+    if (fields.has('urgente'))  updates.push({ range: `${CONFIG.sheetName}!BE${row}`, values: [[p.urgente?'SI':'']] });
+    if (fields.has('estTotal')) updates.push({ range: `${CONFIG.sheetName}!BF${row}`, values: [[p.estTotal||'']] });
+    if (fields.has('tInicio'))  updates.push({ range: `${CONFIG.sheetName}!BG${row}`, values: [[p.tInicio||'']] });
+    if (fields.has('tFin') || fields.has('done')) updates.push({ range: `${CONFIG.sheetName}!BH${row}`, values: [[p.tFin||'']] });
+    if (fields.has('tPausa'))   updates.push({ range: `${CONFIG.sheetName}!BI${row}`, values: [[p.tPausa||0]] });
+    if (fields.has('tNeto'))    updates.push({ range: `${CONFIG.sheetName}!BJ${row}`, values: [[p.tNeto||0]] });
+    if (fields.has('pausasLog')) updates.push({ range: `${CONFIG.sheetName}!BK${row}`, values: [[JSON.stringify(p.pausasLog)]] });
+    requests.push(...updates);
+  });
+
+  if (!requests.length) { setSyncState('ok'); return; }
+
+  try {
+    const body = { valueInputOption: 'USER_ENTERED', data: requests };
+    const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.sheetId}/values:batchUpdate`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer '+state.accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    setSyncState('ok');
+  } catch(e) {
+    setSyncState('err');
+    showToast('Error al guardar: '+e.message,'t-err');
+    state.syncQueue.push(...queue);
+  }
+}
+
+async function syncAll() {
+  await loadSheetData();
+}
+
+function setSyncState(s) {
+  const dot = document.getElementById('sync-dot');
+  const btn = document.getElementById('btn-sync');
+  dot.className = 'sync-dot '+s;
+  btn.className = 'tb-sync'+(s==='syncing'?' syncing':'');
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPage(name) {
+  ['piezas','dashboard','historial'].forEach(n => {
+    document.getElementById('page-'+n).classList.toggle('on', n===name);
+  });
+  document.querySelectorAll('.tb-tab').forEach((el,i) => {
+    el.classList.toggle('on', ['piezas','dashboard','historial'][i]===name);
+  });
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'historial') renderHistory();
+}
+
+function filterStatus(status, btn) {
+  state.filterStatus = status;
+  document.querySelectorAll('.sf-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderSidebar();
+}
+
+function filterProject() {
+  renderSidebar();
+}
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ============================================================
+// UTILS
+// ============================================================
+function pad(n){return String(n).padStart(2,'0')}
+function fmtTime(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;return`${pad(h)}:${pad(m)}:${pad(ss)}`}
+
+function showToast(msg, type='t-ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show '+type;
+  clearTimeout(t._to);
+  t._to = setTimeout(()=>t.className='',3500);
+}
+
+// ============================================================
+// INIT — restore saved config
+// ============================================================
+(function init() {
+  const saved = localStorage.getItem('dm_config');
+  if (saved) {
+    try {
+      const cfg = JSON.parse(saved);
+      document.getElementById('cfg-clientid').value = cfg.clientId||'';
+      document.getElementById('cfg-sheetid').value  = cfg.sheetId||'19nqVJynUBS9S2-EKQvg8gOnEKxYLVCifmrUt5MQwYPM';
+      document.getElementById('cfg-sheetname').value= cfg.sheetName||'Seguimiento de Proyecto';
+      if (cfg.clientId) {
+        CONFIG.clientId   = cfg.clientId;
+        CONFIG.sheetId    = cfg.sheetId;
+        CONFIG.sheetName  = cfg.sheetName;
+      }
+    } catch{}
+  }
+})();
+</script>
+</body>
+</html>
