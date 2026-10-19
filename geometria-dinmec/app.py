@@ -10,6 +10,7 @@ POST /procesar  {"modelo_id": "<uuid>"}   (header X-Clave: <CLAVE_SERVICIO>)
 POST /probar (multipart, campo "archivo") -> JSON con las caras (para pruebas, no toca Supabase)
 GET  /salud
 """
+import logging
 import os
 import tempfile
 
@@ -20,9 +21,16 @@ from pydantic import BaseModel
 
 from geometria import procesar
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
-SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
-CLAVE = os.environ.get("CLAVE_SERVICIO", "")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+log = logging.getLogger("geometria")
+
+# .strip() quita espacios o saltos de línea que se cuelan al pegar en Render
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+for sufijo in ("/rest/v1", "/storage/v1"):
+    if SUPABASE_URL.endswith(sufijo):
+        SUPABASE_URL = SUPABASE_URL[: -len(sufijo)]
+SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+CLAVE = os.environ.get("CLAVE_SERVICIO", "").strip()
 BUCKET = "modelos-3d"
 ORIGENES = [o.strip() for o in os.environ.get("ORIGENES", "*").split(",") if o.strip()]
 MAX_MB = int(os.environ.get("MAX_MB", "80"))
@@ -54,6 +62,7 @@ def _trabajo(modelo_id: str):
             r.raise_for_status()
             filas = r.json()
             if not filas:
+                log.error("Modelo %s: no se encontró el registro en modelos_3d", modelo_id)
                 return
             fila = filas[0]
             _actualizar(cli, modelo_id, {"estado": "procesando", "error_msg": None})
@@ -78,11 +87,16 @@ def _trabajo(modelo_id: str):
                          content=glb)
             r.raise_for_status()
             _actualizar(cli, modelo_id, {"estado": "listo", "glb_path": glb_path, "caras": resultado})
-        except Exception as e:  # el error queda visible en la app
+            log.info("Modelo %s listo: %s caras", modelo_id, resultado["num_caras"])
+        except Exception as e:  # el error queda en los logs de Render y visible en la app
+            detalle = str(e)
+            if isinstance(e, httpx.HTTPStatusError):
+                detalle = f"Supabase respondió {e.response.status_code}: {e.response.text[:300]}"
+            log.error("Modelo %s falló: %s", modelo_id, detalle)
             try:
-                _actualizar(cli, modelo_id, {"estado": "error", "error_msg": str(e)[:500]})
-            except Exception:
-                pass
+                _actualizar(cli, modelo_id, {"estado": "error", "error_msg": detalle[:500]})
+            except Exception as e2:
+                log.error("Tampoco se pudo marcar el error en Supabase: %s", e2)
 
 
 class Solicitud(BaseModel):
@@ -92,6 +106,23 @@ class Solicitud(BaseModel):
 @app.get("/salud")
 def salud():
     return {"ok": True, "supabase": bool(SUPABASE_URL and SERVICE_KEY)}
+
+
+@app.on_event("startup")
+def revisar_supabase():
+    """Al arrancar, prueba la conexión y deja el resultado en los logs."""
+    if not (SUPABASE_URL and SERVICE_KEY):
+        log.error("Faltan SUPABASE_URL o SUPABASE_SERVICE_KEY")
+        return
+    try:
+        r = httpx.get(f"{SUPABASE_URL}/rest/v1/modelos_3d", params={"select": "id", "limit": "1"},
+                      headers=_h(), timeout=20)
+        if r.status_code == 200:
+            log.info("Conexión a Supabase OK (%s)", SUPABASE_URL)
+        else:
+            log.error("Supabase respondió %s al arrancar: %s", r.status_code, r.text[:300])
+    except Exception as e:
+        log.error("No se pudo conectar a Supabase (%s): %s", SUPABASE_URL, e)
 
 
 @app.post("/procesar")
