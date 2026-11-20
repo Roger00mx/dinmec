@@ -12,6 +12,7 @@ Unidades de salida: milímetros y grados.
 import json
 import math
 import struct
+from array import array
 
 from OCP.STEPControl import STEPControl_Reader
 from OCP.IGESControl import IGESControl_Reader
@@ -222,8 +223,11 @@ def geometria_cara(cara, idx):
     return info
 
 
-def triangular(forma, tolerancia_mm=None):
-    """Malla para mostrar. La medición NO usa esta malla, usa la geometría exacta."""
+def parametros_malla(forma, tolerancia_mm=None):
+    """Caja del modelo y tolerancia de la malla de visualización.
+
+    La medición NO usa esta malla, usa la geometría exacta.
+    """
     caja = Bnd_Box()
     BRepBndLib.Add_s(forma, caja)
     pmin, pmax = caja.CornerMin(), caja.CornerMax()
@@ -232,16 +236,18 @@ def triangular(forma, tolerancia_mm=None):
     diag = math.dist((xmin, ymin, zmin), (xmax, ymax, zmax))
     if tolerancia_mm is None:
         tolerancia_mm = max(diag / 2000.0, 0.005)  # fino pero ligero
-    BRepMesh_IncrementalMesh(forma, tolerancia_mm, False, 0.25, True)
-    return {"min": [_r(xmin), _r(ymin), _r(zmin)], "max": [_r(xmax), _r(ymax), _r(zmax)]}
+    return {"min": [_r(xmin), _r(ymin), _r(zmin)], "max": [_r(xmax), _r(ymax), _r(zmax)]}, tolerancia_mm
 
 
 def procesar(ruta: str, formato: str):
     """Regresa (glb_bytes, resultado_dict)."""
     forma, mapa_colores = leer_modelo(ruta, formato)
-    caja = triangular(forma)
+    caja, tolerancia = parametros_malla(forma)
+    constructor = BRep_Builder()
 
-    posiciones, normales, indices, colores = [], [], [], []
+    # array('f') guarda cada número en 4 bytes; una lista de Python usa ~32 bytes por número.
+    posiciones, normales, colores = array("f"), array("f"), array("f")
+    indices = array("I")
     hay_color = False
     caras = []
     tri_total = 0
@@ -257,6 +263,10 @@ def procesar(ruta: str, formato: str):
             info["color"] = [_r(color[0], 4), _r(color[1], 4), _r(color[2], 4)]
         rgb = color or COLOR_DEFECTO
 
+        # Malla cara por cara: se genera, se copia a los arreglos y se libera.
+        # Mallar todo el modelo de golpe guardaba millones de nodos de OpenCascade
+        # en memoria al mismo tiempo (fue lo que reventó los 512 MB de Render).
+        BRepMesh_IncrementalMesh(cara, tolerancia, False, 0.25, False)
         loc = TopLoc_Location()
         tri = BRep_Tool.Triangulation_s(cara, loc)
         n_tri = 0
@@ -268,19 +278,22 @@ def procesar(ruta: str, formato: str):
             if not tri.HasNormals():
                 from OCP.BRepLib import BRepLib_ToolTriangulatedShape
                 BRepLib_ToolTriangulatedShape.ComputeNormals_s(cara, tri)
+            s = -1.0 if invertida else 1.0
             for i in range(1, nn + 1):
                 p = tri.Node(i).Transformed(trsf)
-                posiciones += [p.X(), p.Y(), p.Z()]
+                posiciones.extend((p.X(), p.Y(), p.Z()))
                 n = tri.Normal(i).Transformed(trsf)
-                s = -1.0 if invertida else 1.0
-                normales += [s * n.X(), s * n.Y(), s * n.Z()]
-                colores += rgb
+                normales.extend((s * n.X(), s * n.Y(), s * n.Z()))
+                colores.extend(rgb)
             for j in range(1, tri.NbTriangles() + 1):
                 a, b, c = tri.Triangle(j).Get()
                 if invertida:
                     b, c = c, b
-                indices += [base + a - 1, base + b - 1, base + c - 1]
+                indices.extend((base + a - 1, base + b - 1, base + c - 1))
                 n_tri += 1
+
+            del tri
+            constructor.UpdateFace(cara, None)  # libera la malla de esta cara
 
         info["tri_inicio"] = tri_total
         info["tri_cuenta"] = n_tri
@@ -292,6 +305,8 @@ def procesar(ruta: str, formato: str):
     if not indices:
         raise ValueError("No se pudo generar la malla del modelo")
 
+    # Ya no se necesita la geometría de OpenCascade: liberarla antes de armar el .glb
+    del forma, mapa_colores, exp, cara
     glb = _a_glb(posiciones, normales, indices, colores if hay_color else None)
     resultado = {
         "version": 2,
@@ -308,19 +323,22 @@ def procesar(ruta: str, formato: str):
 def _a_glb(pos, nor, idx, col=None):
     """Escribe un .glb mínimo (1 malla, posiciones + normales + colores + índices)."""
     n_vert = len(pos) // 3
-    b_pos = struct.pack(f"<{len(pos)}f", *pos)
-    b_nor = struct.pack(f"<{len(nor)}f", *nor)
-    b_col = struct.pack(f"<{len(col)}f", *col) if col else b""
-    b_idx = struct.pack(f"<{len(idx)}I", *idx)
+    # .tobytes() copia la memoria tal cual (little-endian en Render) sin crear millones de objetos
+    b_pos = pos.tobytes()
+    b_nor = nor.tobytes()
+    b_col = col.tobytes() if col else b""
+    b_idx = idx.tobytes()
     xs, ys, zs = pos[0::3], pos[1::3], pos[2::3]
+    caja = [min(xs), min(ys), min(zs)], [max(xs), max(ys), max(zs)]
+    del xs, ys, zs
 
     def pad4(b, rell=b"\x00"):
         return b + rell * ((4 - len(b) % 4) % 4)
 
-    binario = pad4(b_pos) + pad4(b_nor) + pad4(b_col) + pad4(b_idx)
     o_nor = len(pad4(b_pos))
     o_col = o_nor + len(pad4(b_nor))
     o_idx = o_col + len(pad4(b_col))
+    largo_bin = o_idx + len(pad4(b_idx))
 
     atributos = {"POSITION": 0, "NORMAL": 1}
     vistas = [
@@ -330,7 +348,7 @@ def _a_glb(pos, nor, idx, col=None):
     ]
     accesores = [
         {"bufferView": 0, "componentType": 5126, "count": n_vert, "type": "VEC3",
-         "min": [min(xs), min(ys), min(zs)], "max": [max(xs), max(ys), max(zs)]},
+         "min": caja[0], "max": caja[1]},
         {"bufferView": 1, "componentType": 5126, "count": n_vert, "type": "VEC3"},
         {"bufferView": 2, "componentType": 5125, "count": len(idx), "type": "SCALAR"},
     ]
@@ -345,12 +363,17 @@ def _a_glb(pos, nor, idx, col=None):
         "scenes": [{"nodes": [0]}],
         "nodes": [{"mesh": 0}],
         "meshes": [{"primitives": [{"attributes": atributos, "indices": 2, "mode": 4}]}],
-        "buffers": [{"byteLength": len(binario)}],
+        "buffers": [{"byteLength": largo_bin}],
         "bufferViews": vistas,
         "accessors": accesores,
     }
     j = pad4(json.dumps(gltf, separators=(",", ":")).encode(), b" ")
-    total = 12 + 8 + len(j) + 8 + len(binario)
-    return (struct.pack("<III", 0x46546C67, 2, total)
-            + struct.pack("<II", len(j), 0x4E4F534A) + j
-            + struct.pack("<II", len(binario), 0x004E4942) + binario)
+    total = 12 + 8 + len(j) + 8 + largo_bin
+    # Se arma en un solo bytearray para no tener varias copias del binario en memoria
+    out = bytearray()
+    out += struct.pack("<III", 0x46546C67, 2, total)
+    out += struct.pack("<II", len(j), 0x4E4F534A) + j
+    out += struct.pack("<II", largo_bin, 0x004E4942)
+    for b in (b_pos, b_nor, b_col, b_idx):
+        out += pad4(b)
+    return bytes(out)
